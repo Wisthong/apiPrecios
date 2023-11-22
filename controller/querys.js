@@ -1,0 +1,70 @@
+const { response, request } = require("express");
+const { connection } = require("../db/connection");
+const { matchedData } = require("express-validator");
+
+const getAll = async (req = request, res = response) => {
+  try {
+    const { id } = matchedData(req);
+    connection.query(
+      `SELECT
+      CLIENTES.DESCRIPCION AS NOMBRE_COMPLETO,
+      CONCAT_WS(
+          '-',
+          CMMOVIMIENTO_PEDIDOS.ID_CO,
+          CMMOVIMIENTO_PEDIDOS.ID_TIPDOC,
+          CMMOVIMIENTO_PEDIDOS.DOCUMENTO_PD
+      ) AS PEDIDO,
+      FECHA_DCTO AS FECHA_PEDIDO,
+      CLIENTES.DIRECCION_1,
+      CMMOVIMIENTO_PEDIDOS.DETALLE1 AS COMENTARIO,
+      CMMOVIMIENTO_PEDIDOS.DETALLE2 AS COMENTARIO2,
+      CLIENTES.CIUDAD_TERCERO AS CIUDAD,
+      VENDEDORES.DESCRIPCION AS VENDEDOR,
+      ITEMS.ID_ITEM AS COD_ITEMS,
+      ITEMS.DESCRIPCION AS ITEMS,
+      CMMOVIMIENTO_PEDIDOS.CANTIDAD_PED AS CANTIDAD_PEDIDA,
+      CMRESUMEN_INVENTARIO.CAN_DISPONIBLE AS CANTIDAD_DISPONIBLE,
+      CMMOVIMIENTO_PEDIDOS.TOT_VENTA AS TOTAL_VENTA,
+      CMMOVIMIENTO_PEDIDOS.PESO AS PESO,
+      CMMOVIMIENTO_PEDIDOS.LAPSO_DOC,
+      ITEMS.ID_ITEM,
+      CO.CODIGO AS COD_CO,
+      CO.DESCRIPCION AS NAME_CO,
+      CMMOVIMIENTO_PEDIDOS.HORA_ING_FAC AS HORA_FACTURA,
+      CMMOVIMIENTO_PEDIDOS.HORA_ING_REM AS HORA_REMISION
+  FROM
+      CMMOVIMIENTO_PEDIDOS
+      INNER JOIN VENDEDORES ON VENDEDORES.CODIGO = CMMOVIMIENTO_PEDIDOS.ID_VENDEDOR
+      INNER JOIN CLIENTES ON CLIENTES.CODIGO = CMMOVIMIENTO_PEDIDOS.ID_TERC
+      INNER JOIN ITEMS ON ITEMS.ID_ITEM = CMMOVIMIENTO_PEDIDOS.ID_ITEM
+      INNER JOIN CMRESUMEN_INVENTARIO ON CMRESUMEN_INVENTARIO.ID_ITEM = ITEMS.ID_ITEM
+      INNER JOIN CENTRO_OPERACION AS CO ON CO.CODIGO = CMRESUMEN_INVENTARIO.ID_CO
+  WHERE
+    CMMOVIMIENTO_PEDIDOS.LAPSO_DOC='202311'
+  GROUP BY 
+      CMMOVIMIENTO_PEDIDOS.LAPSO_DOC,  CLIENTES.DESCRIPCION, ITEMS.ID_ITEM, CO.CODIGO
+  ORDER BY 
+    ITEMS.ID_ITEM, CMMOVIMIENTO_PEDIDOS.LAPSO_DOC
+  `,
+      function (err, results, fields) {
+        if (!err) {
+          res.send({
+            ok: true,
+            data: results,
+          });
+        } else {
+          res.send({
+            message: "Query_ERROR_204",
+          });
+          console.log("Query_ERROR_204");
+        }
+      }
+    );
+  } catch (error) {
+    res.send(error);
+  }
+};
+
+module.exports = {
+  getAll,
+};
