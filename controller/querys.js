@@ -50,7 +50,7 @@ const getAll = async (req = request, res = response) => {
         if (!err) {
           res.send({
             ok: true,
-            data: results,
+            data: results[0],
           });
         } else {
           res.send({

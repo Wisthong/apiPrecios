@@ -35,13 +35,35 @@ const getOnePublic = async (req = request, res = response) => {
   try {
     const { id } = matchedData(req);
     connection.query(
-      `SELECT ITEMS.DESCRIPCION,CMLISTA_PRECIOS_D.ID_LIPRE1 , CMLISTA_PRECIOS_D.PRECIO_MIN_1 FROM CMLISTA_PRECIOS_D INNER JOIN ITEMS ON ITEMS.ID_ITEM=CMLISTA_PRECIOS_D.ID_ITEM INNER JOIN COD_BARRAS ON ITEMS.ID_ITEM=COD_BARRAS.ID_ITEMS WHERE 
-      CMLISTA_PRECIOS_D.ID_LIPRE1 = 'PUB' AND COD_BARRAS.ID_CODBAR=${id}`,
+      `
+        SELECT 
+            ITEMS.DESCRIPCION,          -- Descripción del artículo
+            CMLISTA_PRECIOS_D.ID_LIPRE1,  -- Identificador de la lista de precios
+            CMLISTA_PRECIOS_D.PRECIO_MIN_1, -- Precio mínimo del artículo
+            ITEMS.ID_ITEM               -- Identificador del artículo
+        FROM 
+            CMLISTA_PRECIOS_D 
+        INNER JOIN 
+            ITEMS ON ITEMS.ID_ITEM = CMLISTA_PRECIOS_D.ID_ITEM   -- Unir con la tabla ITEMS
+        INNER JOIN 
+            COD_BARRAS ON ITEMS.ID_ITEM = COD_BARRAS.ID_ITEMS     -- Unir con la tabla COD_BARRAS
+        WHERE 
+            CMLISTA_PRECIOS_D.ID_LIPRE1 = 'PUB'                    -- Filtrar por lista de precios 'PUB'
+            AND COD_BARRAS.ID_CODBAR = ${id};                      -- Filtrar por código de barras específico
+      `,
       function (err, results, fields) {
         if (!err) {
-          res.send({
-            results,
-          });
+          if (results.length > 0) {
+            res.send({
+              results,
+            });
+          } else {
+            res.status(405).send({
+              ok: false,
+              message:
+                "Item no catalogado, por favor dirigite con los asesores",
+            });
+          }
         }
       }
     );
