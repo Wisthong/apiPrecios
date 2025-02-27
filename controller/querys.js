@@ -2,58 +2,79 @@ const { response, request } = require("express");
 const { connection } = require("../db/connection");
 const { matchedData } = require("express-validator");
 
-const getAll = async (req = request, res = response) => {
+const postDO = async (req = request, res = response) => {
   try {
-    const { id } = matchedData(req);
+    const { id_item, lapso_inicio, lapso_fin } = req.body; // Si los parámetros vienen en el cuerpo de la solicitud
+    // Si los parámetros vienen en la URL, puedes usar req.params en lugar de req.body
+
+    if (!id_item || !lapso_inicio || !lapso_fin) {
+      return res.status(400).send({
+        ok: false,
+        message:
+          "Faltan parámetros necesarios: id_item, lapso_inicio, lapso_fin",
+      });
+    }
+
+    // const query = `
+    //   SELECT MV.LAPSO_DOC AS Lapso,
+    //     MV.ID_CO AS "Centro de Operacion",
+    //     CO.DESCRIPCION AS "Nombre Centro de Operacion",
+    //     MV.ID_ITEM AS Item,
+    //     ITMS.DESCRIPCION AS "Nombre Item",
+    //     ITMS.ID_TERC AS "Proveedor Codigo Item",
+    //     ITMS.NOM_TERC AS "Proveedor Nombre Item",
+    //     MV.FECHA_DCTO AS Fecha,
+    //     MV.ID_LIDES AS "Lista Descuento",
+    //     MV.CANTIDAD_CAP AS "Cantidad 1",
+    //     MV.DSCTO_NETOS AS "Valor Descuentos",
+    //     MV.TOT_BRUTO AS "Valor Neto"
+    //   FROM
+    //     ITEMS ITMS
+    //     RIGHT OUTER JOIN (CENTRO_OPERACION CO
+    //     RIGHT OUTER JOIN MOVIMIENTO_VENTAS MV ON CO.CODIGO = MV.ID_CO)
+    //     ON ITMS.ID_ITEM = MV.ID_ITEM AND ITMS.ID_EXT_ITM = MV.ID_EXT_ITM
+    //   WHERE
+    //     MV.ID_ITEM = ?
+    //     AND MV.FECHA_DCTO BETWEEN ? AND ?
+    //     AND MV.ID_LIDES IS NOT NULL
+    //     AND MV.ID_LIDES != ''
+    // `;
+
+    const query = `
+    SELECT 
+      MV.ID_ITEM AS item,
+      ITMS.DESCRIPCION AS "nombre_item",
+      ITMS.ID_TERC AS "proveedor_codigo",
+      ITMS.NOM_TERC AS "proveedor_nombre",
+      MIN(MV.FECHA_DCTO) AS fecha,  -- Te muestra la primera fecha para el Item en el rango
+      MV.ID_LIDES AS "lista_descuento",
+      SUM(MV.DSCTO_NETOS) AS "valor_descuentos"
+    FROM 
+      ITEMS ITMS 
+      RIGHT OUTER JOIN (CENTRO_OPERACION CO 
+      RIGHT OUTER JOIN MOVIMIENTO_VENTAS MV ON CO.CODIGO = MV.ID_CO) 
+      ON ITMS.ID_ITEM = MV.ID_ITEM AND ITMS.ID_EXT_ITM = MV.ID_EXT_ITM
+    WHERE 
+      MV.ID_ITEM = ? 
+      AND MV.FECHA_DCTO BETWEEN ? AND ?
+      AND MV.ID_LIDES IS NOT NULL 
+      AND MV.ID_LIDES != ''
+    `;
+
     connection.query(
-      `SELECT
-      CLIENTES.DESCRIPCION AS NOMBRE_COMPLETO,
-      CONCAT_WS(
-          '-',
-          CMMOVIMIENTO_PEDIDOS.ID_CO,
-          CMMOVIMIENTO_PEDIDOS.ID_TIPDOC,
-          CMMOVIMIENTO_PEDIDOS.DOCUMENTO_PD
-      ) AS PEDIDO,
-      FECHA_DCTO AS FECHA_PEDIDO,
-      CLIENTES.DIRECCION_1,
-      CMMOVIMIENTO_PEDIDOS.DETALLE1 AS COMENTARIO,
-      CMMOVIMIENTO_PEDIDOS.DETALLE2 AS COMENTARIO2,
-      CLIENTES.CIUDAD_TERCERO AS CIUDAD,
-      VENDEDORES.DESCRIPCION AS VENDEDOR,
-      ITEMS.ID_ITEM AS COD_ITEMS,
-      ITEMS.DESCRIPCION AS ITEMS,
-      CMMOVIMIENTO_PEDIDOS.CANTIDAD_PED AS CANTIDAD_PEDIDA,
-      CMRESUMEN_INVENTARIO.CAN_DISPONIBLE AS CANTIDAD_DISPONIBLE,
-      CMMOVIMIENTO_PEDIDOS.TOT_VENTA AS TOTAL_VENTA,
-      CMMOVIMIENTO_PEDIDOS.PESO AS PESO,
-      CMMOVIMIENTO_PEDIDOS.LAPSO_DOC,
-      ITEMS.ID_ITEM,
-      CO.CODIGO AS COD_CO,
-      CO.DESCRIPCION AS NAME_CO,
-      CMMOVIMIENTO_PEDIDOS.HORA_ING_FAC AS HORA_FACTURA,
-      CMMOVIMIENTO_PEDIDOS.HORA_ING_REM AS HORA_REMISION
-  FROM
-      CMMOVIMIENTO_PEDIDOS
-      INNER JOIN VENDEDORES ON VENDEDORES.CODIGO = CMMOVIMIENTO_PEDIDOS.ID_VENDEDOR
-      INNER JOIN CLIENTES ON CLIENTES.CODIGO = CMMOVIMIENTO_PEDIDOS.ID_TERC
-      INNER JOIN ITEMS ON ITEMS.ID_ITEM = CMMOVIMIENTO_PEDIDOS.ID_ITEM
-      INNER JOIN CMRESUMEN_INVENTARIO ON CMRESUMEN_INVENTARIO.ID_ITEM = ITEMS.ID_ITEM
-      INNER JOIN CENTRO_OPERACION AS CO ON CO.CODIGO = CMRESUMEN_INVENTARIO.ID_CO
-  WHERE
-    CMMOVIMIENTO_PEDIDOS.LAPSO_DOC='202311'
-  GROUP BY 
-      CMMOVIMIENTO_PEDIDOS.LAPSO_DOC,  CLIENTES.DESCRIPCION, ITEMS.ID_ITEM, CO.CODIGO
-  ORDER BY 
-    ITEMS.ID_ITEM, CMMOVIMIENTO_PEDIDOS.LAPSO_DOC
-  `,
+      query,
+      [id_item, lapso_inicio, lapso_fin],
       function (err, results, fields) {
         if (!err) {
+          console.log(fields);
+          console.log(results);
+
           res.send({
             ok: true,
-            data: results[0],
+            data: results,
           });
         } else {
-          res.send({
+          res.status(500).send({
             message: "Query_ERROR_204",
           });
           console.log("Query_ERROR_204");
@@ -61,10 +82,10 @@ const getAll = async (req = request, res = response) => {
       }
     );
   } catch (error) {
-    res.send(error);
+    res.status(500).send(error);
   }
 };
 
 module.exports = {
-  getAll,
+  postDO,
 };
