@@ -1,9 +1,9 @@
 const express = require("express");
 // const { validatorCustomer, validatorID } = require("../validators/customers");
 const router = express.Router();
-const { postDO } = require("../controller/querys");
+const { postDO,uploadFile } = require("../controller/querys");
 
 router.post("/", [postDO]);
-// router.get("/:id", [validatorEAN, getOneP14]);
+router.post("/upload", [uploadFile]);
 
 module.exports = router;
