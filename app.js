@@ -1,12 +1,16 @@
 require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
+const morgan = require("morgan");
+const { connection } = require("./db/connection");
+
 const app = express();
-const { dbConnectMySQL } = require("./db/sql/connection");
+app.use(morgan("dev"));
 app.use(cors());
 app.use(express.json());
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3010;
 
 /**
  * API Rest
@@ -21,4 +25,4 @@ app.listen(port, () =>
  * Define your database engine
  */
 
-dbConnectMySQL();
+// dbConnectMySQL();
