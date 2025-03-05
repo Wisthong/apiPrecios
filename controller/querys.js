@@ -4,14 +4,13 @@ const { matchedData } = require("express-validator");
 
 const postDO = async (req = request, res = response) => {
   try {
-    const { id_item, lapso_inicio, lapso_fin } = req.body; // Si los parámetros vienen en el cuerpo de la solicitud
-    // Si los parámetros vienen en la URL, puedes usar req.params en lugar de req.body
+    const { id_item, lapso_inicio, lapso_fin, id_co } = req.body; // Si los parámetros vienen en el cuerpo de la solicitud
 
-    if (!id_item || !lapso_inicio || !lapso_fin) {
+    if (!id_item || !lapso_inicio || !lapso_fin || !id_co) {
       return res.status(400).send({
         ok: false,
         message:
-          "Faltan parámetros necesarios: id_item, lapso_inicio, lapso_fin",
+          "Faltan parámetros necesarios: id_item, lapso_inicio, lapso_fin, id_co",
       });
     }
 
@@ -22,7 +21,7 @@ const postDO = async (req = request, res = response) => {
       ITMS.DESCRIPCION AS "nombre_item",
       ITMS.ID_TERC AS "proveedor_codigo",
       ITMS.NOM_TERC AS "proveedor_nombre",
-      MIN(MV.FECHA_DCTO) AS fecha,  -- Te muestra la primera fecha para el Item en el rango
+      MIN(MV.FECHA_DCTO) AS fecha,  
       MV.ID_LIDES AS "lista_descuento",
       SUM(MV.DSCTO_NETOS) AS "valor_descuentos"
     FROM 
@@ -32,15 +31,16 @@ const postDO = async (req = request, res = response) => {
       ON ITMS.ID_ITEM = MV.ID_ITEM AND ITMS.ID_EXT_ITM = MV.ID_EXT_ITM
     WHERE 
       MV.ID_ITEM = ? 
-      AND MV.ID_CO = ?
-      AND MV.FECHA_DCTO BETWEEN ? AND ?
+      AND MV.FECHA_DCTO BETWEEN ? AND ? 
       AND MV.ID_LIDES IS NOT NULL 
       AND MV.ID_LIDES != ''
+      AND MV.ID_CO = ?
     `;
 
+    // Aquí se incluyen todos los parámetros que la consulta necesita
     connection.query(
       query,
-      [id_item, lapso_inicio, lapso_fin],
+      [id_item, lapso_inicio, lapso_fin, id_co],  // Agregamos id_co aquí
       function (err, results, fields) {
         if (!err) {
           if (results[0].item !== null) {
@@ -55,10 +55,11 @@ const postDO = async (req = request, res = response) => {
             });
           }
         } else {
+          console.log(err);
           res.status(500).send({
-            message: "Query_ERROR_204",
+            message: "Error en la petición",
+            err,
           });
-          console.log("Query_ERROR_204");
         }
       }
     );
